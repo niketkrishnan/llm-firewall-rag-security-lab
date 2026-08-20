@@ -95,6 +95,25 @@ class LLMFirewall:
             tool_allowed=not reasons,
         )
 
+    def inspect_tool_result(self, tool_name: str, text: str) -> SecurityDecision:
+        """Inspect a tool result before it is returned to a model or user."""
+        reasons: list[str] = []
+        if tool_name not in self.allowed_tools:
+            reasons.append("tool is not on the allowlist")
+        if any(canary in text for canary in self.canaries):
+            reasons.append("sensitive canary leaked in tool result")
+        if any(pattern.search(text) for pattern in self.secret_patterns):
+            reasons.append("secret-like value detected in tool result")
+        if re.search(r"<\s*script\b|javascript:", text, re.I):
+            reasons.append("active content detected in tool result")
+        return SecurityDecision(
+            allowed=not reasons,
+            risk="high" if reasons else "low",
+            reasons=tuple(dict.fromkeys(reasons)),
+            redacted_text=self.redact(text),
+            tool_allowed=not reasons,
+        )
+
     def redact(self, text: str) -> str:
         result = text
         for canary in self.canaries:
