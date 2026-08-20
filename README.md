@@ -2,45 +2,65 @@
 
 [![CI](https://github.com/niketkrishnan/llm-firewall-rag-security-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/niketkrishnan/llm-firewall-rag-security-lab/actions/workflows/ci.yml)
 
-A defensive LLM application-security project that implements gateway controls and a reproducible regression corpus for prompt injection, indirect injection, sensitive-data leakage, and excessive tool authority.
+This lab treats an LLM application as a **policy boundary**, not as a trusted black box. It checks untrusted context before generation, redacts canaries and secrets, inspects output, validates structured responses, and constrains tool arguments before any downstream integration is allowed.
 
-> **Authorized-use notice:** The lab uses local fixtures and bounded policy checks. It does not connect to production systems, execute shell commands, or send messages.
+## What the checked-in corpus shows
 
-## Current MVP
+The local authorized corpus contains **7 cases**, including **4 attack cases**. The current policy run blocks all 4 attack cases, blocks 0 benign cases, and records 100% accuracy on this small corpus. Those values are fixture evidence only; they are not a claim that any model or firewall is universally safe.
 
-The MVP provides an input firewall, untrusted-context signal, canary/secret redaction, output inspection, tool allowlisting, and a JSON evaluation report. It does not require an LLM API key; a model adapter can be added later behind the same policy boundary.
+| Measure | Local result |
+| --- | ---: |
+| Corpus cases | 7 |
+| Attack cases | 4 |
+| Attack block rate | 100% |
+| Benign block rate | 0% |
+| Accuracy | 100% |
 
-## Run locally
+Inspect [`artifacts/evaluation.json`](artifacts/evaluation.json) for the case-level decisions, redactions, reasons, and tool authorization output.
+
+## Run the lab
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
 python -m pip install -e '.[dev]'
 python evaluate.py
 pytest
 ```
 
-## OWASP mapping
+The default path deliberately uses local policy logic and does not require an LLM API key. That makes the security contract reproducible and keeps the model integration optional.
 
-The starter corpus maps to prompt injection, indirect prompt injection, sensitive-information handling, and excessive agency. The next milestone will add structured-output validation, citation checks, RAG poisoning fixtures, and a vulnerable-baseline comparison.
+## Control-plane architecture
 
-## Evaluation
+```mermaid
+flowchart LR
+    A[User prompt + retrieved context] --> B[Input policy]
+    B -->|allow / redact / block| C[Optional model adapter]
+    C --> D[Output inspection]
+    D --> E[Structured response checks]
+    E --> F[Tool authorization]
+    F --> G[Audited decision]
+```
 
-The report computes attack-block rate, benign-block rate, and total accuracy. These are local-corpus metrics only; they are not a claim of universal model safety. A future release will publish corpus version, model adapter, latency, and attack-success results for each control configuration.
+The project’s useful design question is not “can the model refuse this prompt?” but “which trust decision was made at each boundary, and can an analyst inspect the reason?”
 
-## Development milestones
+## OWASP-oriented test map
 
-The repository history is organized into incremental documentation, implementation, testing, evaluation, and release milestones.
+| Threat surface | Test evidence |
+| --- | --- |
+| Direct and indirect prompt injection | Input policy and active-content cases |
+| Sensitive information disclosure | Canary and secret redaction cases |
+| Excessive agency | Tool allowlist and argument checks |
+| Unreliable downstream behavior | Structured-output validation |
 
+## Safe extension point
 
-## Reviewer quickstart
+A real model adapter can sit behind the input policy and before output inspection, but it must remain optional, authenticated, rate-limited, and excluded from the default test path. The lab does not execute tools, send messages, or connect to production systems.
 
-Start with `src/firewall.py`, then run `python evaluate.py` and inspect `artifacts/evaluation.json`. The security boundary is explicit: the firewall returns policy decisions, never calls a model, and never executes tools. The tests cover input injection, output leakage, tool authorization, active content, and structured-output contracts.
+## Related work
 
-## What I learned
+- [Explainable AI SOC Detection](https://github.com/niketkrishnan/explainable-ai-soc) — evidence-first detection and triage.
+- [Cloud Attack-Path Prioritizer](https://github.com/niketkrishnan/cloud-attack-path-prioritizer) — graph reasoning over cloud trust paths.
+- [SBOM Supply-Chain Intelligence](https://github.com/niketkrishnan/sbom-supply-chain-intelligence) — policy decisions that developers can act on.
+- [Identity Compromise Detector](https://github.com/niketkrishnan/identity-compromise-detector) — privacy-safe risk explanations.
+- [Portfolio site](https://github.com/niketkrishnan/HTML-Website) — recruiter-facing overview.
 
-LLM security is a control-plane problem: retrieved content, model output, and tool arguments need separate trust decisions. A bounded gateway is more reviewable than an unrestricted agent integration because every decision has a reason and a redacted representation.
-
-## Limitations
-
-The corpus is local and intentionally small. Pattern matching can miss novel attacks and can produce false positives. The project does not claim universal model safety or replace provider safeguards, sandboxing, human review, or production threat modeling.
+For security concerns, use a private GitHub Security Advisory or contact [@niketkrishnan](https://github.com/niketkrishnan). Keep real secrets and production prompts out of public issues.
