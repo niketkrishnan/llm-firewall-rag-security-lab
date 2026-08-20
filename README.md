@@ -1,5 +1,7 @@
 # LLM Firewall and RAG/Agent Security Evaluation Lab
 
+[![CI](https://github.com/niketkrishnan/llm-firewall-rag-security-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/niketkrishnan/llm-firewall-rag-security-lab/actions/workflows/ci.yml)
+
 A defensive LLM application-security project that implements gateway controls and a reproducible regression corpus for prompt injection, indirect injection, sensitive-data leakage, and excessive tool authority.
 
 > **Authorized-use notice:** The lab uses local fixtures and bounded policy checks. It does not connect to production systems, execute shell commands, or send messages.
@@ -29,3 +31,16 @@ The report computes attack-block rate, benign-block rate, and total accuracy. Th
 ## Development milestones
 
 The repository history is organized into incremental documentation, implementation, testing, evaluation, and release milestones.
+
+
+## Reviewer quickstart
+
+Start with `src/firewall.py`, then run `python evaluate.py` and inspect `artifacts/evaluation.json`. The security boundary is explicit: the firewall returns policy decisions, never calls a model, and never executes tools. The tests cover input injection, output leakage, tool authorization, active content, and structured-output contracts.
+
+## What I learned
+
+LLM security is a control-plane problem: retrieved content, model output, and tool arguments need separate trust decisions. A bounded gateway is more reviewable than an unrestricted agent integration because every decision has a reason and a redacted representation.
+
+## Limitations
+
+The corpus is local and intentionally small. Pattern matching can miss novel attacks and can produce false positives. The project does not claim universal model safety or replace provider safeguards, sandboxing, human review, or production threat modeling.
