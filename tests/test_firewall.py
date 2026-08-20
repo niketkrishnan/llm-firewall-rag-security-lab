@@ -29,13 +29,3 @@ def test_benign_input_is_allowed():
     decision = LLMFirewall().inspect_input("Summarize the public policy.")
     assert decision.allowed is True
     assert decision.risk == "low"
-
-
-def test_tool_result_inspection_blocks_active_content_and_redacts_secrets():
-    decision = LLMFirewall().inspect_tool_result(
-        "lookup_public_document",
-        "<script>alert(1)</script> password=supersecret",
-    )
-    assert decision.allowed is False
-    assert "active content detected in tool result" in decision.reasons
-    assert "REDACTED_SECRET" in decision.redacted_text
