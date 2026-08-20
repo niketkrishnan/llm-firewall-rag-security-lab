@@ -6,6 +6,7 @@ signals that a caller can use before sending data to a model or acting on output
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, asdict
 from typing import Any
@@ -112,6 +113,28 @@ class LLMFirewall:
             reasons=tuple(dict.fromkeys(reasons)),
             redacted_text=self.redact(text),
             tool_allowed=not reasons,
+        )
+
+    def inspect_structured_output(self, payload: dict[str, Any], required_keys: tuple[str, ...] = ("answer",)) -> SecurityDecision:
+        """Validate a bounded model response before downstream use."""
+        reasons: list[str] = []
+        if not isinstance(payload, dict):
+            reasons.append("structured output must be an object")
+            serialized = str(payload)
+        else:
+            missing = [key for key in required_keys if key not in payload]
+            if missing:
+                reasons.append(f"missing required output keys: {', '.join(missing)}")
+            serialized = json.dumps(payload, sort_keys=True)
+        if len(serialized) > 20_000:
+            reasons.append("structured output exceeds bounded size limit")
+        inspection = self.inspect_output(serialized)
+        reasons.extend(inspection.reasons)
+        return SecurityDecision(
+            allowed=not reasons,
+            risk="high" if reasons else "low",
+            reasons=tuple(dict.fromkeys(reasons)),
+            redacted_text=inspection.redacted_text,
         )
 
     def redact(self, text: str) -> str:
